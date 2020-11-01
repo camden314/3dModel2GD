@@ -4,18 +4,16 @@ import numpy as np
 from level import Block
 from math import acos, hypot, sqrt
 
-YCONST = 0
-
 def centeroid(arr):
 	length = arr.shape[0]
 	sum_x = np.sum(arr[:, 0])
 	sum_y = np.sum(arr[:, 1])
 	return sum_x/length, sum_y/length
+
 def getDistance(p1,p2):
 	dist = sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
 	return dist
 
-globpiv = []
 class Triformer(level.Transformer):
 	def __init__(self, *blocks):
 		super().__init__(*blocks)
@@ -26,22 +24,21 @@ class Triformer(level.Transformer):
 		self.triC = 0
 
 		self.triab = 0
+
 	def rotateBeginning(self, degrees=90, modifier=1):
-		global globpiv
-		#self.blocks.sort(key=lambda b:b.coords()[0])
 		if modifier==-1:
 			self.blocks.reverse()
-		globpiv = (self.blocks[0].coords()[0]-(14.6*modifier), self.blocks[0].coords()[1]+YCONST)
-		#print(globpiv)
-		self.rotate(degrees, pivot=globpiv)
+		piv = (self.blocks[0].coords()[0]-(14.6*modifier), self.blocks[0].coords()[1])
+
+		self.rotate(degrees, pivot=piv)
 		if modifier==-1:
 			self.blocks.reverse()
 		return self
+
 	@classmethod
 	def createLine(cls, x, y, length, end=False):
 		blocks = []
 		x+=15
-		y-=YCONST
 		if end:
 			x-=length
 		fullturns = int(length//30)
@@ -57,14 +54,14 @@ class Triformer(level.Transformer):
 		retvalue = cls(*blocks)
 		retvalue.lineLength = length
 		return retvalue
+
 	def attachLineAtStart(self, length, clear=False):
-		global globpiv
-		globpiv = [self.blocks[0].coords()[0], self.blocks[0].coords()[1]+YCONST]
+		piv = list(self.blocks[0].coords())
 
-		globpiv[0] -= np.cos(np.deg2rad(float(self.blocks[0]['rotation'])))*15
-		globpiv[1] += np.sin(np.deg2rad(float(self.blocks[0]['rotation'])))*15
+		piv[0] -= np.cos(np.deg2rad(float(self.blocks[0]['rotation'])))*15
+		piv[1] += np.sin(np.deg2rad(float(self.blocks[0]['rotation'])))*15
 
-		line = Triformer.createLine(globpiv[0], globpiv[1], length, end=False)
+		line = Triformer.createLine(piv[0], piv[1], length, end=False)
 
 		if clear:
 			self.clear()
@@ -73,14 +70,13 @@ class Triformer(level.Transformer):
 		return self
 
 	def attachLineAtEnd(self, length, clear=False):
-		global globpiv
-		globpiv = [self.blocks[-1].coords()[0], self.blocks[-1].coords()[1]]
+		piv = list(self.blocks[-1].coords())
 
-		globpiv[0] += (np.cos(np.deg2rad(float(self.blocks[-1]['rotation'])))*15)
-		globpiv[1] -= (np.sin(np.deg2rad(float(self.blocks[-1]['rotation'])))*15)-YCONST
+		piv[0] += (np.cos(np.deg2rad(float(self.blocks[-1]['rotation'])))*15)
+		piv[1] -= (np.sin(np.deg2rad(float(self.blocks[-1]['rotation'])))*15)
 
-		line = Triformer.createLine(globpiv[0], globpiv[1], length, end=False)
-		#globpiv = [line.blocks[0].coords()[0]-15, line.blocks[0].coords()[1]+(YCONST)]
+		line = Triformer.createLine(piv[0], piv[1], length, end=False)
+
 		if clear:
 			self.clear()
 		self.appendTransformer(line)
@@ -88,8 +84,7 @@ class Triformer(level.Transformer):
 		return self
 
 	def findTriCenter(self):
-		global globpiv
-		start = (self.blocks[0].coords()[0]-14.6, self.blocks[0].coords()[1]+YCONST)
+		start = (self.blocks[0].coords()[0]-14.6, self.blocks[0].coords()[1])
 
 		pointA = start
 
@@ -99,8 +94,6 @@ class Triformer(level.Transformer):
 
 		pointB[0] += np.cos(np.deg2rad(self.triab))*(self.triB-0.6)
 		pointB[1] -= np.sin(np.deg2rad(self.triab))*(self.triB-0.6)
-
-		globpiv = centeroid(np.array([pointA,pointB,pointC]))
 
 		return centeroid(np.array([pointA,pointB,pointC]))
 
@@ -121,9 +114,10 @@ class Triformer(level.Transformer):
 			b['size'] = float(b['size'])*X
 			b.setCoords(sx,sy)
 		return self
+
 	def fillTri(self):
 		x1, y1 = self.findTriCenter()
-		x2, y2 = (self.blocks[0].coords()[0]-14.6, self.blocks[0].coords()[1]+YCONST)
+		x2, y2 = (self.blocks[0].coords()[0]-14.6, self.blocks[0].coords()[1])
 		dist = int((hypot(x2 - x1, y2 - y1)//4)+2)
 
 		i=1
@@ -135,6 +129,7 @@ class Triformer(level.Transformer):
 			self.appendTransformer(tr).appendTransformer(tr2)
 			i+=0.25/dist
 		return self
+
 	@classmethod
 	def createTri(cls, x, y, A=30, B=40, C=50):
 		try:
@@ -151,6 +146,7 @@ class Triformer(level.Transformer):
 		out.triA, out.triB, out.triC = triA.lineLength, triB.lineLength, triC.lineLength
 		out.triab = ab
 		return out
+
 	@classmethod
 	def fromPoints(cls, vertices):
 		pointAB, pointAC, pointBC = vertices
@@ -173,7 +169,4 @@ class Triformer(level.Transformer):
 			tri = cls.createTri(pointAB[0],pointAB[1], A=lineA, B=lineB, C=lineC).rotateBeginning(-dgs)
 		else:
 			tri = level.Transformer()
-			print("unpog")
-
-		#tri.appendTransformer(blks)
 		return tri
